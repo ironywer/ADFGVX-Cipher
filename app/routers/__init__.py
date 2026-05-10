@@ -1,6 +1,4 @@
-from .encryption import router as encryption_router
-from .decryption import router as decryption_router
-from .grid import router as grid_router
-from .permutation import router as permutation_router
+from .encrypt_auto import router as encrypt_auto_router
+from .decrypt_auto import router as decrypt_auto_router
 
-__all__ = ['encryption_router', 'decryption_router', 'grid_router', 'permutation_router']
+__all__ = ['encrypt_auto_router', 'decrypt_auto_router']

@@ -1,3 +1,3 @@
-from .adfgvx import ADFGVXCipher, ADFGVX_LETTERS
+from .adfgvx import ADFGVXCipher
 
-__all__ = ['ADFGVXCipher', 'ADFGVX_LETTERS']
+__all__ = ['ADFGVXCipher']
