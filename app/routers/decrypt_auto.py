@@ -236,29 +236,33 @@ async def load_grid_from_file(grid_file):
 
 
 def perform_decryption(cipher, ciphertext: str) -> str:
-    """Выполняет дешифрование и возвращает текст"""
+    """Выполняет дешифрование и возвращает текст. Ключ универсален — работает с любой длиной."""
     # Инвертируем таблицу
     reverse_grid = {v[0] + v[1]: k for k, v in cipher.grid.items()}
     
     cols = len(cipher.keyword)
     total_len = len(ciphertext)
     rows = total_len // cols
+    remainder = total_len % cols
+    total_rows = rows + (1 if remainder > 0 else 0)
     
-    # Порядок столбцов
+    # Порядок столбцов (перестановка по алфавитному порядку букв ключевого слова)
     col_order = sorted(range(cols), key=lambda i: cipher.keyword[i])
     
-    # Заполняем матрицу
-    matrix = [['' for _ in range(cols)] for _ in range(rows)]
+    # Заполняем матрицу по столбцам в порядке перестановки
+    # Столбцы с индексом < remainder имеют (rows+1) символов, остальные — rows
+    matrix = [['' for _ in range(cols)] for _ in range(total_rows)]
     pos = 0
-    for i, col_idx in enumerate(col_order):
-        for row in range(rows):
+    for col_idx in col_order:
+        col_height = rows + (1 if col_idx < remainder else 0)
+        for row in range(col_height):
             if pos < total_len:
                 matrix[row][col_idx] = ciphertext[pos]
                 pos += 1
     
     # Читаем по строкам
     encoded = []
-    for row in range(rows):
+    for row in range(total_rows):
         for col in range(cols):
             if matrix[row][col]:
                 encoded.append(matrix[row][col])

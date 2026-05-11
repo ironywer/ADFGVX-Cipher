@@ -55,18 +55,18 @@ class ADFGVXCipher:
     
     def check_keyword_compatibility(self, encoded_length: int, keyword: str) -> bool:
         """
-        Проверяет, подходит ли ключевое слово для шифрования текста заданной длины
-        Возвращает True, если длина закодированного текста кратна длине ключевого слова
+        Проверяет, подходит ли ключевое слово для шифрования текста заданной длины.
+        Всегда возвращает True — ключи универсальны и не зависят от кратности.
         """
-        return encoded_length % len(keyword) == 0
+        return True
     
     def find_compatible_keyword(self, encoded_length: int) -> Optional[str]:
         """
-        Ищет в истории ключевое слово, подходящее для шифрования текста заданной длины
+        Возвращает первое ключевое слово из истории.
+        Ключи универсальны — любой ключ подходит для любой длины текста.
         """
-        for keyword in self.keywords_history:
-            if self.check_keyword_compatibility(encoded_length, keyword):
-                return keyword
+        if self.keywords_history:
+            return self.keywords_history[0]
         return None
     
     def generate_permutation_table(self, keyword: str = None):
@@ -103,7 +103,8 @@ class ADFGVXCipher:
     
     def encrypt_with_keyword(self, plaintext: str, keyword: str) -> Tuple[str, str]:
         """
-        Шифрование текста с указанным ключевым словом
+        Шифрование текста с указанным ключевым словом.
+        Ключ универсален — работает с любой длиной текста.
         Возвращает (зашифрованный_текст, использованное_ключевое_слово)
         """
         if not self.grid:
@@ -124,48 +125,46 @@ class ADFGVXCipher:
         encoded_str = ''.join(encoded)
         encoded_length = len(encoded_str)
         
-        # Проверяем совместимость ключевого слова
-        keyword_upper = keyword.upper()
-        if not self.check_keyword_compatibility(encoded_length, keyword_upper):
-            raise ValueError(
-                f"Длина закодированного текста ({encoded_length}) "
-                f"не кратна длине ключевого слова ({len(keyword_upper)})"
-            )
-        
         # Сохраняем ключевое слово
+        keyword_upper = keyword.upper()
         self.keyword = keyword_upper
         self.add_keyword_to_history(keyword_upper)
         
         cols = len(self.keyword)
         rows = encoded_length // cols
+        remainder = encoded_length % cols
         
-        # Заполняем матрицу по строкам
-        matrix = []
-        idx = 0
-        for i in range(rows):
-            row = []
-            for j in range(cols):
-                if idx < encoded_length:
-                    row.append(encoded_str[idx])
-                    idx += 1
-                else:
-                    row.append('')
-            matrix.append(row)
-        
-        # Получаем порядок перестановки столбцов
+        # Определяем порядок перестановки столбцов
         perm_order = self.generate_permutation_table()['permutation_order']
         
+        # Заполняем матрицу по строкам (неполные столбцы допускаются)
+        # Если есть остаток, первые remainder столбцов получают rows+1 символов
+        total_rows = rows + (1 if remainder > 0 else 0)
+        matrix = [['' for _ in range(cols)] for _ in range(total_rows)]
+        idx = 0
+        for i in range(total_rows):
+            for j in range(cols):
+                if idx < encoded_length:
+                    matrix[i][j] = encoded_str[idx]
+                    idx += 1
+        
         # Читаем по столбцам в порядке перестановки
+        # Количество символов в каждом столбце зависит от позиции:
+        # столбцы с индексом < remainder имеют (rows+1) символов, остальные — rows
         result = []
         for col_idx in perm_order:
-            for row in range(rows):
+            col_height = rows + (1 if col_idx < remainder else 0)
+            for row in range(col_height):
                 if matrix[row][col_idx]:
                     result.append(matrix[row][col_idx])
         
         return ''.join(result), self.keyword
     
     def decrypt_with_keyword(self, ciphertext: str, keyword: str) -> str:
-        """Дешифрование текста с указанным ключевым словом"""
+        """
+        Дешифрование текста с указанным ключевым словом.
+        Ключ универсален — работает с любой длиной шифротекста.
+        """
         if not self.grid:
             raise ValueError("Таблица шифра не загружена")
         
@@ -181,13 +180,8 @@ class ADFGVXCipher:
         cols = len(keyword_upper)
         total_len = len(ciphertext)
         
-        # Проверяем, что длина шифротекста корректна
-        if total_len % cols != 0:
-            raise ValueError(
-                f"Длина шифротекста ({total_len}) не кратна длине ключа ({cols})"
-            )
-        
         rows = total_len // cols
+        remainder = total_len % cols
         
         # Сохраняем ключевое слово
         self.keyword = keyword_upper
@@ -195,20 +189,24 @@ class ADFGVXCipher:
         # Получаем порядок перестановки
         perm_order = self.generate_permutation_table()['permutation_order']
         
-        # Создаем пустую матрицу
-        matrix = [['' for _ in range(cols)] for _ in range(rows)]
+        total_rows = rows + (1 if remainder > 0 else 0)
         
-        # Заполняем матрицу по столбцам
+        # Создаем пустую матрицу
+        matrix = [['' for _ in range(cols)] for _ in range(total_rows)]
+        
+        # Заполняем матрицу по столбцам в порядке перестановки
+        # Каждый столбец col_idx содержит (rows+1) символов если col_idx < remainder, иначе rows
         pos = 0
-        for perm_idx, col_idx in enumerate(perm_order):
-            for row in range(rows):
+        for col_idx in perm_order:
+            col_height = rows + (1 if col_idx < remainder else 0)
+            for row in range(col_height):
                 if pos < total_len:
                     matrix[row][col_idx] = ciphertext[pos]
                     pos += 1
         
         # Читаем по строкам
         encoded = []
-        for row in range(rows):
+        for row in range(total_rows):
             for col in range(cols):
                 if matrix[row][col]:
                     encoded.append(matrix[row][col])

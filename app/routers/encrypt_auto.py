@@ -204,20 +204,13 @@ async def encrypt_auto_keyword(
             detail="No keywords available. Please add keywords using /keywords/add"
         )
     
-    # Ищем подходящее ключевое слово
+    # Используем первое ключевое слово из истории (ключи универсальны)
     compatible_keyword = cipher.find_compatible_keyword(encoded_length)
     
     if not compatible_keyword:
-        # Предлагаем возможные длины ключей
-        possible_lengths = []
-        for i in range(2, min(encoded_length, 21)):
-            if encoded_length % i == 0:
-                possible_lengths.append(i)
-        
         raise HTTPException(
             status_code=400,
-            detail=f"No compatible keyword found for encoded length {encoded_length}. "
-                   f"Please add a keyword with length in {possible_lengths} or use /keywords/add"
+            detail="No keywords available. Please add keywords using /keywords/add"
         )
     
     # Шифруем с найденным ключевым словом
@@ -538,19 +531,17 @@ async def check_compatibility(
     text_length: int,
     keyword: str
 ):
-    """Проверяет, подходит ли ключевое слово для текста заданной длины"""
+    """Проверяет совместимость ключевого слова с текстом. Ключи всегда совместимы."""
     encoded_length = text_length * 2
     keyword_length = len(keyword)
-    
-    is_compatible = encoded_length % keyword_length == 0
     
     return {
         "text_length": text_length,
         "encoded_length": encoded_length,
         "keyword": keyword.upper(),
         "keyword_length": keyword_length,
-        "is_compatible": is_compatible,
-        "remainder": encoded_length % keyword_length if not is_compatible else 0
+        "is_compatible": True,
+        "remainder": 0
     }
 
 
