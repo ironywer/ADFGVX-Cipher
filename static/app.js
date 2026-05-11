@@ -34,9 +34,8 @@ function setLoading(btn, loading) {
 // ===== Session status =====
 async function refreshSession() {
   try {
-    const r = await fetch(API + '/');
-    const d = await r.json();
-    const s = d.current_session_state;
+    const r = await fetch(API + '/api/session-state');
+    const s = await r.json();
     const gDot = document.getElementById('gridDot');
     const kDot = document.getElementById('keywordsDot');
     const eDot = document.getElementById('encryptedDot');

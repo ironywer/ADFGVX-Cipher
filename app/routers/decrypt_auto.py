@@ -218,10 +218,18 @@ async def load_grid_from_file(grid_file):
         content = await grid_file.read()
         grid_data = json.loads(content)
         
+        # Поддерживаем два формата:
+        # 1. Прямой: {"A": "AD", "B": "AF", ...}
+        # 2. С метаданными: {"grid": {"A": "AD", ...}, "metadata": {...}}
+        if isinstance(grid_data, dict) and 'grid' in grid_data:
+            grid_data = grid_data['grid']
+        
         restored_grid = {}
         for k, v in grid_data.items():
             if isinstance(v, str) and len(v) == 2:
-                restored_grid[k.upper()] = (v[0], v[1])
+                restored_grid[k.upper()] = (v[0].upper(), v[1].upper())
+            elif isinstance(v, list) and len(v) == 2:
+                restored_grid[k.upper()] = (v[0].upper(), v[1].upper())
         return restored_grid
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Error loading grid: {str(e)}")
