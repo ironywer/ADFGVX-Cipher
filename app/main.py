@@ -1,7 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from app.cipher import ADFGVXCipher
 from datetime import datetime
+import os
 
 # Создаем экземпляр шифра
 cipher = ADFGVXCipher()
@@ -35,9 +38,18 @@ app.state.grid_generated = False
 app.state.grid_generation_time = datetime.now().isoformat()
 app.state.grid_loaded_from_file = None
 
-# Корневой эндпоинт
-@app.get("/")
-async def root():
+# Подключаем статические файлы
+static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
+app.mount("/static", StaticFiles(directory=static_dir), name="static")
+
+# Главная страница
+@app.get("/", response_class=FileResponse)
+async def serve_index():
+    return FileResponse(os.path.join(static_dir, "index.html"))
+
+# API информация
+@app.get("/api")
+async def api_info():
     return {
         "message": "ADFGVX Cipher API v2.1",
         "version": "2.1.0",
@@ -83,6 +95,17 @@ async def root():
             "last_encrypted": app.state.last_encrypted_text is not None,
             "last_decrypted": app.state.last_decrypted_text is not None
         }
+    }
+
+
+# Session state endpoint for frontend
+@app.get("/api/session-state")
+async def session_state():
+    return {
+        "grid_available": app.state.last_grid is not None,
+        "keywords_count": len(app.state.keywords_history),
+        "last_encrypted": app.state.last_encrypted_text is not None,
+        "last_decrypted": app.state.last_decrypted_text is not None
     }
 
 

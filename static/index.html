@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ADFGVX Cipher — Шифрование и Дешифрование</title>
+  <meta name="description" content="Веб-интерфейс для шифра ADFGVX с управлением таблицей подстановки и ключевыми словами">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <div class="toast-container" id="toastContainer"></div>
+
+  <div class="app-container">
+    <header class="app-header">
+      <h1 class="app-title">🔐 ADFGVX Cipher</h1>
+      <p class="app-subtitle">Шифрование и дешифрование с управлением таблицей и ключами</p>
+    </header>
+
+    <!-- Session Status -->
+    <div class="session-bar" id="sessionBar">
+      <div class="status-indicator">
+        <span class="status-dot" id="gridDot"></span>
+        <span id="gridStatusText">Таблица: загрузка...</span>
+      </div>
+      <div class="status-indicator">
+        <span class="status-dot" id="keywordsDot"></span>
+        <span id="keywordsStatusText">Ключи: загрузка...</span>
+      </div>
+      <div class="status-indicator">
+        <span class="status-dot" id="encryptedDot"></span>
+        <span id="encryptedStatusText">Шифротекст: нет</span>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="nav-tabs">
+      <button class="nav-tab active" data-tab="grid" id="nav-grid">
+        <span class="tab-icon">📊</span><span class="tab-label">Таблица</span>
+      </button>
+      <button class="nav-tab" data-tab="keywords" id="nav-keywords">
+        <span class="tab-icon">🔑</span><span class="tab-label">Ключи</span>
+      </button>
+      <button class="nav-tab" data-tab="encrypt" id="nav-encrypt">
+        <span class="tab-icon">🔒</span><span class="tab-label">Шифрование</span>
+      </button>
+      <button class="nav-tab" data-tab="decrypt" id="nav-decrypt">
+        <span class="tab-icon">🔓</span><span class="tab-label">Дешифрование</span>
+      </button>
+    </nav>
+
+    <!-- TAB 1: Grid Management -->
+    <div class="tab-content active" id="tab-grid">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title"><span class="icon">⚡</span> Генерация таблицы</h2>
+          </div>
+          <p class="card-description">Создайте новую случайную таблицу подстановки 6×6 для шифра ADFGVX. Можно задать свой алфавит (36 символов).</p>
+          <div class="form-group">
+            <label class="form-label" for="customAlphabet">Пользовательский алфавит (необязательно)</label>
+            <input type="text" class="form-input mono" id="customAlphabet" maxlength="36" placeholder="ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789">
+          </div>
+          <button class="btn btn-primary btn-block" id="btnGenerateGrid" onclick="generateGrid()">
+            <span class="spinner"></span><span class="btn-text">Сгенерировать таблицу</span>
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title"><span class="icon">📂</span> Загрузка таблицы</h2>
+          </div>
+          <p class="card-description">Загрузите ранее сохранённую таблицу из JSON-файла.</p>
+          <div class="file-upload-area" id="gridUploadArea">
+            <input type="file" id="gridFileInput" accept=".json" onchange="handleGridFileSelect(this)">
+            <div class="file-upload-icon">📁</div>
+            <div class="file-upload-text">Перетащите JSON-файл или нажмите для выбора</div>
+            <div class="file-upload-hint">.json файл с таблицей шифра</div>
+            <div class="file-name-display" id="gridFileName"></div>
+          </div>
+          <br>
+          <button class="btn btn-success btn-block" id="btnLoadGrid" onclick="loadGrid()">
+            <span class="spinner"></span><span class="btn-text">Загрузить таблицу</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Grid Display -->
+      <div class="card" id="gridDisplayCard" style="display:none;">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">📋</span> Текущая таблица</h2>
+          <button class="btn btn-outline btn-sm" onclick="downloadGrid()">⬇ Скачать JSON</button>
+        </div>
+        <div class="adfgvx-grid-container">
+          <table class="adfgvx-grid" id="gridTable"></table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: Keywords Management -->
+    <div class="tab-content" id="tab-keywords">
+      <div class="grid-2">
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title"><span class="icon">➕</span> Добавить ключ</h2>
+          </div>
+          <p class="card-description">Ключевое слово используется для перестановки столбцов. Длина: 2–20 символов, только латиница.</p>
+          <div class="form-group">
+            <label class="form-label" for="newKeyword">Ключевое слово</label>
+            <input type="text" class="form-input mono" id="newKeyword" maxlength="20" placeholder="KEYWORD">
+          </div>
+          <button class="btn btn-primary btn-block" onclick="addKeyword()">
+            <span class="spinner"></span><span class="btn-text">Добавить</span>
+          </button>
+
+          <div class="divider">или загрузить из файла</div>
+
+          <div class="file-upload-area">
+            <input type="file" id="keywordsFileInput" accept=".json" onchange="handleKeywordsFileSelect(this)">
+            <div class="file-upload-icon">📁</div>
+            <div class="file-upload-text">JSON-файл с ключами</div>
+            <div class="file-name-display" id="keywordsFileName"></div>
+          </div>
+          <br>
+          <button class="btn btn-success btn-block" onclick="uploadKeywords()">
+            <span class="spinner"></span><span class="btn-text">Загрузить ключи из файла</span>
+          </button>
+        </div>
+
+        <div class="card">
+          <div class="card-header">
+            <h2 class="card-title"><span class="icon">📝</span> Список ключей</h2>
+            <div class="btn-group">
+              <button class="btn btn-outline btn-sm" onclick="downloadKeywords()">⬇ Скачать</button>
+              <button class="btn btn-danger btn-sm" onclick="clearKeywords()">🗑 Очистить</button>
+            </div>
+          </div>
+          <div id="keywordsList" class="keywords-list">
+            <div class="empty-state"><div class="empty-icon">🔑</div><p>Ключевых слов пока нет</p></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: Encryption -->
+    <div class="tab-content" id="tab-encrypt">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">🔒</span> Шифрование</h2>
+        </div>
+        <p class="card-description">Введите текст или загрузите файл. Выберите режим: с указанием ключа или автоподбор из списка.</p>
+
+        <div class="toggle-group">
+          <button class="toggle-option active" onclick="setEncryptMode('manual')" id="encModeManual">Указать ключ</button>
+          <button class="toggle-option" onclick="setEncryptMode('auto')" id="encModeAuto">Автоподбор ключа</button>
+        </div>
+
+        <div class="toggle-group">
+          <button class="toggle-option active" onclick="setEncryptInput('text')" id="encInputText">Ввод текста</button>
+          <button class="toggle-option" onclick="setEncryptInput('file')" id="encInputFile">Из файла</button>
+        </div>
+
+        <div id="encryptTextInput">
+          <div class="form-group">
+            <label class="form-label" for="encryptPlaintext">Исходный текст</label>
+            <textarea class="form-textarea" id="encryptPlaintext" placeholder="Введите текст для шифрования..."></textarea>
+          </div>
+        </div>
+
+        <div id="encryptFileInput" style="display:none;">
+          <div class="file-upload-area">
+            <input type="file" id="encryptFileField" accept=".txt" onchange="handleEncryptFileSelect(this)">
+            <div class="file-upload-icon">📄</div>
+            <div class="file-upload-text">Выберите текстовый файл</div>
+            <div class="file-name-display" id="encryptFileName"></div>
+          </div>
+        </div>
+
+        <div id="encryptKeywordField" class="form-group" style="margin-top:16px;">
+          <label class="form-label" for="encryptKeyword">Ключевое слово</label>
+          <input type="text" class="form-input mono" id="encryptKeyword" maxlength="20" placeholder="KEYWORD">
+        </div>
+
+        <div class="btn-group" style="margin-top:16px;">
+          <button class="btn btn-primary btn-lg" id="btnEncrypt" onclick="encryptText()">
+            <span class="spinner"></span><span class="btn-text">🔒 Зашифровать</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="card" id="encryptResultCard" style="display:none;">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">✅</span> Результат шифрования</h2>
+          <button class="btn btn-outline btn-sm" onclick="downloadEncrypted()">⬇ Скачать</button>
+        </div>
+        <div class="result-box">
+          <div class="result-label">Зашифрованный текст</div>
+          <div class="result-text" id="encryptedResult"></div>
+          <div class="result-stats" id="encryptStats"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: Decryption -->
+    <div class="tab-content" id="tab-decrypt">
+      <div class="card">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">🔓</span> Дешифрование</h2>
+        </div>
+        <p class="card-description">Дешифруйте текст, используя данные текущей сессии или загрузив таблицу и ключ вручную.</p>
+
+        <div class="toggle-group">
+          <button class="toggle-option active" onclick="setDecryptMode('session')" id="decModeSession">Из сессии</button>
+          <button class="toggle-option" onclick="setDecryptMode('manual')" id="decModeManual">Вручную (файлы)</button>
+        </div>
+
+        <div class="toggle-group">
+          <button class="toggle-option active" onclick="setDecryptInput('text')" id="decInputText">Ввод текста</button>
+          <button class="toggle-option" onclick="setDecryptInput('file')" id="decInputFile">Из файла</button>
+        </div>
+
+        <div id="decryptTextInput">
+          <div class="form-group">
+            <label class="form-label" for="decryptCiphertext">Шифротекст</label>
+            <textarea class="form-textarea" id="decryptCiphertext" placeholder="Введите шифротекст (только символы ADFGVX)..."></textarea>
+          </div>
+        </div>
+
+        <div id="decryptFileInput" style="display:none;">
+          <div class="file-upload-area">
+            <input type="file" id="decryptCipherFile" accept=".txt" onchange="handleDecryptFileSelect(this)">
+            <div class="file-upload-icon">📄</div>
+            <div class="file-upload-text">Файл с шифротекстом</div>
+            <div class="file-name-display" id="decryptCipherFileName"></div>
+          </div>
+        </div>
+
+        <div id="decryptManualFields" style="display:none; margin-top:16px;">
+          <div class="form-group">
+            <label class="form-label" for="decryptKeyword">Ключевое слово</label>
+            <input type="text" class="form-input mono" id="decryptKeyword" placeholder="KEYWORD">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Файл таблицы (JSON)</label>
+            <div class="file-upload-area">
+              <input type="file" id="decryptGridFile" accept=".json" onchange="handleDecryptGridFileSelect(this)">
+              <div class="file-upload-icon">📊</div>
+              <div class="file-upload-text">JSON-файл с таблицей</div>
+              <div class="file-name-display" id="decryptGridFileName"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="btn-group" style="margin-top:16px;">
+          <button class="btn btn-primary btn-lg" id="btnDecrypt" onclick="decryptText()">
+            <span class="spinner"></span><span class="btn-text">🔓 Дешифровать</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="card" id="decryptResultCard" style="display:none;">
+        <div class="card-header">
+          <h2 class="card-title"><span class="icon">✅</span> Результат дешифрования</h2>
+          <button class="btn btn-outline btn-sm" onclick="downloadDecrypted()">⬇ Скачать</button>
+        </div>
+        <div class="result-box">
+          <div class="result-label">Расшифрованный текст</div>
+          <div class="result-text" id="decryptedResult"></div>
+          <div class="result-stats" id="decryptStats"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/static/app.js"></script>
+</body>
+</html>
